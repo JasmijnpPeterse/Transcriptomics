@@ -1,0 +1,323 @@
+---
+title: "Plan van aanpak"
+output: html_document
+date: "2026-10-26"
+---
+# Plan van Aanpak (PvA) – 
+## RNA-Seq analyse slaapdeprivatie (SD) en herstelslaap (RS) in de muizencortex
+
+## 1. Achtergrond en doel
+
+De oorspronkelijke studie (Peixoto-lab, Washington State University) onderzocht hoe genexpressie in de cortex van volwassen mannelijke wild-type C57BL/6J-muizen (8–12 weken) verandert na 3 en 5–6 uur slaapdeprivatie (SD) en na 2 en 6 uur herstelslaap (RS). Slaapdruk (de behoefte om te slapen) bouwt op tijdens wakker blijven en neemt weer af tijdens slapen. De vraag is welke genen dat patroon volgen.
+
+Doel van ons project: de belangrijkste stappen van de originele analyse reproduceren op de ruwe data. We bepalen welke genen verschillend tot expressie komen (DEGs) per tijdspunt, en welke functies en pathways daarbij horen, en vergelijken dat met de paper.
+
+Gentle handling is de methode waarmee de muizen in deze studie wakker gehouden worden. Een onderzoeker let continu op de muizen en grijpt in zodra een muis tekenen van slaap of rust laat zien. Dat gebeurt met zachte prikkels: voorzichtig aanraken of strijken met bijvoorbeeld een penseel, tegen de kooi tikken of de kooi licht schudden. De muizen blijven in hun eigen kooi.
+
+- **Waarom deze methode:** ze is milder dan alternatieven zoals muizen op kleine platforms boven water zetten of een draaiende staaf gebruiken. Bij die methodes is stress of gedwongen bewegen een groot storend effect. Gentle handling is daarom de gebruikelijke keuze voor korte SD (4–6 uur) bij muizen.
+- **Wat het niet is:** het is niet stressvrij. Er is onderzoek dat laat zien dat herhaald handelen de corticosteronspiegels (stresshormoon) kan verhogen en de rusttijd verlaagt. Voor ons is dit relevant: een deel van de genexpressieveranderingen na SD kan door stress komen en niet door slaapverlies zelf. De auteurs noemen dit zelf als verklaring voor genen die niet snel normaliseren (zie sectie 5).
+- **Controles:** de thuiskooi-controles (HC) worden ongestoord gelaten en op dezelfde kloktijd verzameld. Daardoor kan het effect van de kloktijd (circadiaan ritme) los gezien worden van het effect van slaapverlies.
+
+#### 1.2 Hypothese: wat verwachten wij te zien?
+
+**Hypothese van de paper.** Veranderingen in genexpressie die de basis vormen van slaaphomeostase (het systeem dat slaapdruk bijhoudt en weer afbouwt) volgen de dynamiek van slaapdruk:
+
+1. Slaapdruk, en dus het aantal veranderde genen, is maximaal na 5–6 uur SD.
+2. Tijdens herstelslaap neemt slaapdruk snel af (grotendeels binnen ~2 uur). Genen die in dezelfde tijd terugkeren naar normaal zijn kandidaten voor de moleculaire basis van slaapdruk.
+3. Genen die na SD veranderd zijn maar niet snel terugkeren (6 uur RS of langer) komen waarschijnlijk niet door slaapdruk maar door algemene (celstress) effecten van SD.
+4. Herstelslaap zelf kan ook genen veranderen die na SD niet veranderd waren (RS-specifieke genen).
+
+**Concrete verwachtingen uit de paper** (die we kunnen toetsen in onze eigen resultaten):
+
+| Wat | Verwachting (aantal DEGs, paper) |
+|---|---|
+| SD3 vs HC3 | ~2315 DEGs (1373 omlaag, 942 omhoog). Overwegend omlaag. |
+| SD5–6 vs HC5–6 | ~7493 DEGs (4390 omlaag, 3103 omhoog). Grootste effect, ongeveer de helft van het cortex-transcriptoom. Bijna 90% van de positieve controles teruggevonden. |
+| RS2 vs HC7 | ~3908 DEGs. |
+| RS6 vs HC12 | ~1989 DEGs (1104 omhoog, 885 omlaag). Hier meer omhoog dan omlaag. |
+| Genormaliseerd binnen 2 uur RS | ~3976 genen (1556 omhoog, 2420 omlaag). Dit is de grootste groep. |
+| Genormaliseerd na 2–6 uur RS | ~2407 genen (966 omhoog, 1441 omlaag). |
+| Pas genormaliseerd na meer dan 6 uur RS | ~640 genen (338 omhoog, 302 omlaag). |
+| Alleen veranderd bij RS (niet na SD) | omhoog 423 (RS2) en 463 (RS6); omlaag 691. |
+
+**Hypothese voor ons project.** Als wij dezelfde pipeline en dezelfde data gebruiken, komen we in dezelfde orde van grootte uit (aantallen DEGs, richting van effecten, ~90% positieve controles bij SD5–6) en vinden we dezelfde kernthema's terug: redox/glutathion, chromatine (Parp1, Dnmt3a, Ctcf), DNA-schade/herstel, de klokgenen Dec1 (Bhlhe40) en Dec2 (Bhlhe41), cholesterol en stressrespons. Afwijkingen verwachten we vooral door toolversies, filterkeuzes en eventuele ontbrekende samples. Een precieze drempel voor "gereproduceerd" spreken we nog af (bijvoorbeeld hoe groot de overlap in DEG-lijsten minimaal moet zijn).
+
+#### 1.3 Korte begrippenlijst
+
+| Begrip | Betekenis |
+|---|---|
+| SD / RS / HC | Slaapdeprivatie / herstelslaap (recovery sleep) / thuiskooi-controle (home cage). |
+| ZT | Zeitgeber-tijd. ZT0 = licht aan (begin van de rustperiode van muizen), ZT12 = licht uit. ZT7 betekent 7 uur na lichtaanvang. |
+| DEG | Differentieel tot expressie komend gen: een gen waarvan het expressieniveau statistisch verschilt tussen twee groepen. |
+| Contrast | Een vergelijking tussen twee groepen, bijvoorbeeld SD3 vs HC3. |
+| log2FC | Log2 van de verandering in expressie. +1 betekent twee keer zo hoog, −1 twee keer zo laag. |
+| CPM | Counts per million: reads per gen gecorrigeerd voor sequencediepte. |
+| FDR | False discovery rate: gecorrigeerde p-waarde voor het testen van ~19.000 genen tegelijk. FDR < 0.05 betekent dat naar verwachting minder dan 5% van de gemelde DEGs onterecht is. |
+| Batch-effect | Technische variatie door andere lab, dag of apparatuur, die niets met de biologie te maken heeft. |
+| Pathway / verrijking | Een groep genen met een gezamenlijke functie. Verrijking: komen genen uit die groep vaker voor in onze DEG-lijst dan door toeval verwacht? |
+
+## 2. Overzicht van de door de oorspronkelijke auteurs gebruikte tools en technieken (RNA-Seq)
+
+#### 2.1 Wetlab en sequencing
+
+Dit deel doen wij niet zelf. Het is wel nodig om te weten hoe de data tot stand zijn gekomen, omdat verschillen in labs, hersengebied en protocol later het batch-effect veroorzaken.
+
+- **Weefsel:** frontale cortex (SD5, HC5, RS2, HC7) of cerebrale cortex (SD3, HC3, SD6, HC6, RS6, HC12). Dissectie op een koud blok, snel ingevroren in vloeibare stikstof, opslag bij –80 °C.
+- **RNA-isolatie:** homogenisatie in Qiazol (TissueLyser) en extractie met de RNeasy-kit (Qiagen).
+- **RNA-kwaliteit:** Fragment Analyzer met de High Sensitivity RNA Analysis Kit.
+- **Library prep:** Illumina TruSeq Stranded mRNA (poly-T selectie, fragmentatie, cDNA-synthese, dA-tailing, adapterligatie, PCR-verrijking).
+- **Library QC en kwantificatie:** Fragment Analyzer (High Sensitivity NGS Kit) en StepOnePlus met de KAPA Library Quantification Kit.
+- **Sequencer:** Illumina HiSeq 2500 (cBot, HiSeq Cluster Kit v4, SBS kit v4), paired-end, 100 bp, gemiddeld ~54 miljoen read-paren per sample (beschreven voor de nieuwe samples RS2 en HC7; uitgevoerd door de WSU Spokane Genomics Core).
+- **Base calling en conversie:** HiSeq Control Software v2.2.68 en bcl2fastq v2.17.1.14 (adapters worden getrimd tijdens de conversie).
+
+#### 2.2 Bioinformatica: wat is elke stap en waarom?
+
+De analyse loopt van ruwe reads naar een lijst van genen met een functionele interpretatie. Per stap staat hieronder wat het is en waarom het nodig is.
+
+**A. Van reads naar tellingen per gen**
+
+| Stap | Wat is het? | Waarom? |
+|---|---|---|
+| Referentie: GENCODE M28, GRCm39 | De "kaart" van het muizengenoom en alle bekende genen en transcripten (versie M28). | Reads zijn alleen korte stukjes tekst. Om te weten van welk gen ze komen, is een referentie nodig. Dezelfde versie als de auteurs maakt vergelijking eerlijker. |
+| Genoom als decoy in de index | Naast de transcripten staat ook de rest van het genoom in de index, als "afleider". | Reads uit niet-transcript-regio's (bijvoorbeeld DNA-vervuiling of onbewerkt RNA) worden dan niet ten onrechte aan een transcript toegewezen. |
+| Salmon v1.8.0 | Programma dat telt hoeveel reads van elk transcript komen, zonder elke read volledig uit te lijnen (snel). Instellingen: `--gencode` (leest de GENCODE-namen goed), `-k 31` (k-mer-lengte voor de index), `--libType A` (bepaalt zelf de strengigheid en richting van de reads), `--numBootstraps 30` (herhaalt de telling 30 keer om de onzekerheid in te schatten). | Het levert per sample een schatting van de expressie per transcript. |
+| tximeta v1.18.0 | R-pakket dat de Salmon-uitvoer inleest, onthoudt welke referentie is gebruikt, en transcripten optelt tot gen-niveau. | Voor differentiële expressie willen we één getal per gen per sample: een tabel met genen als rijen en samples als kolommen (de "count matrix"). |
+| R / Bioconductor v3.17.1 | De software-omgeving waarin de statistiek draait. | Vaste versies maken het resultaat reproduceerbaar. |
+
+**B. Opschonen, normaliseren en batchcorrectie**
+
+| Stap | Wat is het? | Waarom? |
+|---|---|---|
+| Genfilter | Genen met te weinig reads (minder dan 10 reads in meer dan 5 samples) worden verwijderd. | Bij heel lage tellingen zijn grote veranderingen vaak toeval. Dit voorkomt opgeblazen log2FC-waarden en spaart statistische kracht. Na filteren blijven ~18.872 genen over. |
+| Upper-quartile-normalisatie (EDASeq v2.34.0) | Elke sample wordt geschaald met een referentiewaarde (het bovenste kwartiel van de tellingen). | Samples hebben verschillende sequencediepte. Zonder correctie lijkt een gen in een diep gesequenced sample hoger. Het bovenste kwartiel is minder gevoelig voor een paar extreem hoge genen. |
+| RUVs, k = 3 (RUVSeq v1.34.0) | Methode om "ongewenste variatie" te schatten en eruit te halen. Gebruikt 3422 genen waarvan bekend is dat ze niet door SD veranderen (empirische negatieve controles). Alle variatie die in die genen toch zichtbaar is, is dus ruis. Zo worden 3 ruisfactoren geschat. | Zonder correctie verklaarde het lab ~48% van de variatie (PC1), meer dan de biologie. De 3 factoren gaan later in het statistische model mee, zodat ze het effect van SD en RS niet verstoren. |
+| PCA (vóór en na RUVs) | Plot dat elk sample als punt toont, zodanig dat samples die op elkaar lijken dicht bij elkaar liggen. | Zo zien we of samples groeperen op behandeling en kloktijd (goed) of op lab (slecht). Na correctie: PC1 ≈ hoeveelheid slaap (~14%), PC2 ≈ kloktijd (~6%). |
+
+**C. Differentiële expressie en controle**
+
+| Stap | Wat is het? | Waarom? |
+|---|---|---|
+| edgeR v3.38.1, quasi-likelihood F-test (QLF) | Statistische toets per gen: tellingen worden beschreven met een negatief-binomiaal model en een F-toets bepaalt of de behandeling een effect heeft. De RUV-factoren zitten als extra variabelen in het model. | Dit is de standaardmethode voor RNA-Seq met weinig replicaten per groep. De QLF-variant is voorzichtig bij kleine n. |
+| FDR < 0.05 | Correctie voor het toetsen van ~19.000 genen. | Zonder correctie zouden al honderden genen puur door toeval significant zijn. |
+| Extra filter log2CPM > 0 | Alleen DEGs met voldoende expressie (gemiddeld minstens ongeveer 1 CPM) tellen mee. | De auteurs kozen dit omdat het positieve controles behoudt en ruim 150 negatieve controles uit de DEG-lijst haalt (slechts 9 positieve controles verloren). |
+| 670 positieve controles | Genen waarvan een onafhankelijke microarraystudie (ref. 8) al liet zien dat ze door 5–6 uur SD veranderen. Plus ~200 RS-genen. | Als onze analyse deze genen terugvindt (bij SD5–6 ~90%), werkt onze pipeline. Dit meet de gevoeligheid. |
+| 3422 negatieve controles | Genen die niet door SD veranderen. | Staan deze veel in onze DEG-lijst, dan zijn er veel valse positieven. Ze dienen ook als ankers voor RUVs. |
+
+**D. Interpretatie**
+
+| Stap | Wat is het? | Waarom? |
+|---|---|---|
+| Annotatie: Ensembl release 105 | Koppelt gen-ID's aan gennamen en beschrijvingen. | Genen herkenbaar maken (bijvoorbeeld Parp1) en controle-lijsten kunnen koppelen. |
+| UpSetR v1.4.0 / ComplexUpset v1.3.3 | Plot die toont welke DEGs gedeeld worden tussen tijdspunten (een Venn-diagram voor meer dan 3 lijsten). Omhoog en omlaag gescheiden, alleen groepen van minstens 100 genen. | Zo zien we per gen op welke tijdspunten het veranderd is. Dat geeft de herstelpatronen (sectie 5). Omhoog en omlaag gescheiden omdat een gen dat omhoog gaat bij SD en omlaag bij RS een ander verhaal is dan een gen dat omhoog blijft. |
+| DAVID v2021 (Knowledgebase v2023q3) | Webtool voor functionele verrijking. Test of een DEG-lijst opvallend veel genen bevat uit één functiegroep (UniProt biologische processen, moleculaire functies, KEGG-pathways). EASE-score p < 0.05 (een iets strengere variant van de Fisher-toets), achtergrond = de 18.872 gefilterde genen. Clustering (3/3, similarity 0.20) bundelt termen die vrijwel dezelfde genen bevatten. | Van een lijst van duizenden genen naar een begrijpelijk verhaal (bijvoorbeeld "chromatine-regulatie"). De achtergrond moet de expressieset zijn en niet het hele genoom, anders krijg je vertekende verrijking. |
+| ggplot2 v3.5.1 | R-pakket voor figuren: bubble plots, PCA, volcano plots, relative log expression. | Visualisatie van de resultaten. Een volcano plot toont per gen effectgrootte tegen significantie. |
+
+## 3. Samples, scope en groepsindeling
+
+#### 3.1 Scope: welke data nemen wij mee?
+
+De originele paper combineert drie GEO-series. Wij gaan niet alle data uit die series nemen en niet alleen de data van het eigen experiment. We kijken naar de data die de auteurs zelf geproduceerd hebben, en bekijken per serie wat er precies in zit. Het belangrijkste is dat een GEO-serie meer kan bevatten dan het deel dat de paper gebruikt.
+
+| GEO-serie | Wie? | Wat zit erin (volgens beschrijving) | Wat gebruikt de paper? |
+|---|---|---|---|
+| GSE237419 | Peixoto-lab (WSU) | Nieuwe data: 5 uur SD gevolgd door 2 uur RS (RS2) en thuiskooi-controles (HC7). In GEO sinds augustus 2024. | Alles (HC7 en RS2, 5 + 5 dieren). |
+| GSE113754 | Peixoto-lab (WSU) | Eerste RNA-Seq-studie van SD in wild-type én Shank3-mutante muizen, frontale cortex. | Alleen wild-type SD5 en HC5 (5 + 5 dieren). De Shank3-mutanten dus niet. |
+| GSE140345 | Lausanne (Universiteit van Lausanne, Hor et al. 2019) | Tijdreeks van de cerebrale cortex van 24 uur vóór tot 48 uur na een 6-uurs SD, plus chromatine-toegankelijkheid. Dus veel meer tijdspunten dan de paper gebruikt. | Slechts zes groepen: HC3, SD3, HC6, SD6, HC12, RS6. |
+
+**Voorstel voor onze scope** (nog te bevestigen):
+
+- **Kern (de data van de auteurs):** GSE237419 (HC7, RS2) en het wild-type deel van GSE113754 (HC5, SD5). Dat zijn 20 samples, allemaal frontale cortex en uit hetzelfde lab.
+- **Uitbreiding (volledige reproductie):** GSE140345 erbij voor SD3, SD6, HC3, HC6, HC12 en RS6 (22 samples uit een ander lab en hersengebied).
+
+| Wat kan er met welke scope? | Kern (20 samples) | Kern + GSE140345 (42 samples) |
+|---|---|---|
+| RS2 vs HC7 | Ja | Ja |
+| SD5 vs HC5 (SD5–6 wordt dan SD5 alleen) | Ja | Ja, als SD5–6 |
+| SD3 vs HC3 | Nee | Ja |
+| RS6 vs HC12 | Nee | Ja |
+| Herstelpatroon "binnen 2 uur genormaliseerd" (DE bij SD5, niet bij RS2) en "uniek voor RS2" | Ja | Ja |
+| Patronen "2–6 uur" en "meer dan 6 uur" | Nee (geen RS6) | Ja |
+| Batch-effect tussen labs en hersengebieden | Klein (één lab, één hersengebied, wel twee afzonderlijke sequencingruns) | Groot (RUVs nodig, ~48% variatie) |
+
+Voordeel van de kern: een vergelijking SD5 versus RS2 binnen één lab en één hersengebied is minder gevoelig voor batch-effecten dan de gecombineerde analyse van de paper. Nadeel: de uitkomsten van sommige contrasten (SD3, RS6) en patronen kunnen we niet reproduceren.
+
+#### 3.2 Wat telt als sample?
+
+In GEO is elk "GSM" één gesequencede library. Het is niet gezegd dat dat altijd precies één dier is of dat een serie alleen RNA-Seq bevat. Omdat wij niet weten of de verschillende delen van een serie als aparte samples zijn geteld, doen we dit voordat we iets analyseren:
+
+1. Van elke serie de samplelijst ophalen (GEO of SRA Run Selector) en per GSM noteren: titel, genotype, behandeling, ZT, weefsel, type data (RNA-Seq of ATAC-Seq?) en dier-ID.
+2. Alleen wild-type RNA-Seq-samples in de juiste groepen meenemen. Dus niet de Shank3-mutanten uit GSE113754 en niet de ATAC-Seq-samples of tijdspunten die de paper niet gebruikt uit GSE140345.
+3. Per groep het aantal samples vergelijken met het aantal dieren in de paper (zie 3.3). Als er per GSM meerdere SRR-bestanden (sequencing-runs of lanes) zijn, horen die bij hetzelfde sample en worden ze samen gekwantificeerd. Het zijn technische herhalingen en geen onafhankelijke dieren.
+4. Klopt het aantal niet? Dan noteren we het verschil en bespreken we het in het verslag.
+
+#### 3.3 Groepen (zoals in de paper)
+
+In totaal 10 groepen en 42 samples (n = onafhankelijke dieren). Alle HC-groepen zijn tijdgematchte thuiskooi-controles (circadiane controles).
+
+| Groep | n | Conditie | Serie | Hersengebied | Gebruikt als | In kern? |
+|---|---|---|---|---|---|---|
+| HC3 | 3 | thuiskooi, ZT3 | GSE140345 | cerebrale cortex | controle voor SD3 | Nee |
+| SD3 | 3 | 3 uur SD | GSE140345 | cerebrale cortex | behandeling in SD3 vs HC3 | Nee |
+| HC5 | 5 | thuiskooi, ZT5 | GSE113754 | frontale cortex | controle voor SD5–6 | Ja |
+| SD5 | 5 | 5 uur SD | GSE113754 | frontale cortex | behandeling in SD5–6 | Ja |
+| HC6 | 5 | thuiskooi, ZT6 | GSE140345 | cerebrale cortex | controle voor SD5–6 | Nee |
+| SD6 | 3 | 6 uur SD | GSE140345 | cerebrale cortex | behandeling in SD5–6 | Nee |
+| HC7 | 5 | thuiskooi, ZT7 (ongestoord van ZT0 tot ZT7) | GSE237419 | frontale cortex | controle voor RS2 | Ja |
+| RS2 | 5 | 5 uur SD + 2 uur herstelslaap (verzameld op ZT7) | GSE237419 | frontale cortex | behandeling in RS2 vs HC7 | Ja |
+| HC12 | 5 | thuiskooi, ZT12 | GSE140345 | cerebrale cortex | controle voor RS6 | Nee |
+| RS6 | 3 | 6 uur SD + 6 uur herstelslaap | GSE140345 | cerebrale cortex | behandeling in RS6 vs HC12 | Nee |
+
+Totaal: 10 (GSE113754) + 10 (GSE237419) + 22 (GSE140345) = 42 samples. De kern bestaat uit 20 samples.
+
+Opmerkingen:
+
+- In de paper worden SD5 en SD6 samengevoegd tot **SD5–6** (n = 8) en HC5 en HC6 tot **HC5–6** (n = 10). Zo ontstaat één schatting van het effect van lange SD en worden lab- en hersengebiedeffecten (cortex versus frontale cortex) weggemodelleerd. In de kern-scope bestaat SD5–6 alleen uit SD5 (n = 5) en HC5–6 alleen uit HC5 (n = 5).
+- RS2 en HC7 zijn over vijf dagen verzameld (elke dag één dier per groep). Dat kan een dag-effect geven. Het is een extra reden om de PCA goed te bekijken.
+- Er is een sterk batch-effect tussen de labs: het lab verklaart ~48% van de variatie (PC1) vóór correctie. Daarom is RUVs nodig bij de volledige reproductie.
+
+## 4. Tools, data (referentiegenoom) en ons idee
+
+#### 4.1 Data
+
+**Ruwe reads (FASTQ):**
+
+- **GSE237419 = de RS2/HC7-set.** Dit is de nieuwe data van de auteurs (5 uur SD + 2 uur RS, en de controles op ZT7). Ja, wij gebruiken deze set, want hij levert het contrast RS2 vs HC7 en vormt de kern van de scope. Aandachtspunt: de GEO-pagina zelf (met de lijst van GSM-nummers) moet nog handmatig worden gecontroleerd.
+- **GSE113754 (alleen wild-type):** voor SD5 en HC5. Shank3-mutanten sluiten we uit.
+- **GSE140345 (optioneel):** voor de uitbreiding. Alleen de zes groepen uit sectie 3.3.
+- Ophalen via SRA (bijvoorbeeld `prefetch` en `fasterq-dump`) of via de SRA Run Selector (BioProject-nummer staat op de GEO-pagina).
+- Opslagruimte (grove schatting): 54 miljoen read-paren van 100 bp geeft per sample enkele GB gecomprimeerde FASTQ. Reken op enkele tientallen GB voor 20 samples en ruim 100 GB voor 42 samples. Dit controleren we zodra we de bestandsgroottes zien.
+
+**Referentie:** GENCODE M28 / GRCm39 (genoom-FASTA, transcriptoom-FASTA en GTF-annotatie), net als de auteurs.
+
+**Controlegenlijsten en resultaten van de auteurs:** de paper heeft een Zenodo-record met Supplemental Tables S1–S5. Daar zitten de 670 positieve en 3422 negatieve controles (S1), de DEG-lijsten per vergelijking (S3), de intersecties (S4) en de DAVID-resultaten (S5) in. Dit zijn onze referentiewaarden om mee te vergelijken. Zie sectie 8 voor de link.
+
+#### 4.2 Tools
+
+We gebruiken dezelfde tools als het origineel voor reproduceerbaarheid. De tabel in 2.2 legt uit wat ze doen. Dit is de aanvullende lijst voor onze eigen praktische uitvoering.
+
+| Tool | Waarvoor | Opmerking |
+|---|---|---|
+| SRA Toolkit (`prefetch`, `fasterq-dump`) | FASTQ-bestanden downloaden uit SRA. | Output eventueel comprimeren met gzip. |
+| FastQC | Kwaliteitscontrole per sample: basekwaliteit, adapters, duplicaten, leeslengte. | Tonen of FASTQ uit SRA nog adapters bevat. De auteurs trimden adapters bij conversie, onze gedownloade data kunnen anders zijn. |
+| MultiQC | Voegt alle FastQC-rapporten samen tot één overzicht. | Handig om afwijkende samples snel te vinden. |
+| (optioneel) fastp of Trim Galore | Adapters en slechte basen wegknippen. | Alleen als FastQC het nodig toont. |
+| Salmon v1.8.0 | Kwantificatie met decoy-aware index. | Index bouwen kost tijd en enkele GB geheugen (check beschikbare hardware). |
+| R + Bioconductor (tximeta, EDASeq, RUVSeq, edgeR) | Gen-tellingen, normalisatie, batchcorrectie, statistiek. | Vastleggen welke versies we echt draaien (`sessionInfo()`), bij voorkeur in een conda-omgeving of met `renv`. |
+| UpSetR, ComplexUpset, ggplot2 | Figuren. | |
+| DAVID (webtool of API) | Functionele verrijking. | De originele versie is v2021 met Knowledgebase v2023q3. De database wordt bijgewerkt, dus kleine verschillen zijn te verwachten. |
+| (optioneel) STAR + featureCounts + DESeq2 | Alternatieve pipeline voor een robuustheidscheck. | Alleen als er tijd is. |
+
+Let op: de versienummers in de paper lijken niet allemaal bij één Bioconductor-release te horen. Voor zover ik weet hoort edgeR 3.38.1 bij Bioconductor 3.15, terwijl tximeta, EDASeq en RUVSeq bij 3.17 horen. Dit controleren we bij de installatie en we noteren welke versies we uiteindelijk gebruiken.
+
+#### 4.3 Ons idee en werkwijze
+
+De uitwerking per stap, met waarom en controles, staat in sectie 6. Kort: samples bepalen en downloaden, QC, Salmon-kwantificatie, filteren en normaliseren, differentiële expressie, validatie met controle-genen, intersecties, functionele verrijking en vergelijking met de paper. Optioneel een tweede pipeline als check.
+
+## 5. Vergelijkingen (contrasten) en wat ze kunnen betekenen
+
+Differentiële expressie wordt steeds bepaald ten opzichte van de tijdgematchte thuiskooi-controle.
+
+1. **SD3 vs HC3** – vroeg effect van korte SD. Origineel 2315 DEGs (1373 omlaag, 942 omhoog).
+2. **SD5–6 vs HC5–6** – maximaal effect van lange SD (piek slaapdruk). Origineel 7493 DEGs (4390 omlaag, 3103 omhoog).
+3. **RS2 vs HC7** – effect na 2 uur herstelslaap. Origineel 3908 DEGs.
+4. **RS6 vs HC12** – effect na 6 uur herstelslaap. Origineel 1989 DEGs (1104 omhoog, 885 omlaag).
+
+### 5.1 Afgeleide vergelijkingen en mogelijke oorzaken
+
+Een afgeleide vergelijking ontstaat door de DEG-lijsten van de vier contrasten te kruisen (apart voor omhoog en omlaag). De vraag is: bij welke tijdspunten is een gen veranderd? Dat geeft het herstelpatroon. De kolom "mogelijke oorzaak" bevat de interpretatie die de auteurs zelf geven en is dus een hypothese. De paper noemt zichzelf ook "hypothesis-generating".
+
+| Patroon | Definitie | Voorbeelden uit de paper | Mogelijke oorzaak (interpretatie van de auteurs) |
+|---|---|---|---|
+| **Snel genormaliseerd** | DE bij SD5–6 (en eventueel SD3), niet meer DE bij RS2. | Chromatine-regulatie (Parp1, Dnmt3a, Ctcf), redox/glutathion, DNA-schade/herstel (Rad50, Xpa), klokgenen Dec1 en Dec2, eiwitsynthese (Eifs), insulin/FoxO. Na slechts 3 uur SD: vroege genen (Fos, Egr1, Nr4a1) en klokgenen (Per1, Dec1). | Deze genen volgen de tijdschaal van slaapdruk (opbouw bij SD, afbouw in ~2 uur RS). Daarom zijn ze kandidaten voor de moleculaire basis van slaaphomeostase. Verband tussen oxidatieve stress, DNA-schade en chromatine. Vroege genen als Fos en Egr1 weerspiegelen waarschijnlijk neuronale activiteit tijdens wakker zijn. |
+| **Genormaliseerd na 2–6 uur RS** | DE bij RS2, niet bij RS6. | mTOR-signalering, celadhesie, cholesterolbiosynthese (Mvd, Msmo1), ionentransport, stressrespons. | Trager herstel. Past mogelijk bij processen die na SD langer nodig hebben om te herstellen, zoals metabolisme en ionenbalans. Dit zijn gemengde categorieën: gedeeltelijk slaapgerelateerd, gedeeltelijk algemene cellulaire respons. |
+| **Niet genormaliseerd na 6 uur RS** | Nog DE bij RS6. | Stressrespons (Hsp-genen), cholesterolbiosynthese (Nsdhl, Mvk), MAPK en PI3K/AKT-signalering (Homer1), insulinesignalering. | De auteurs vermoeden dat dit geen slaapspecifieke effecten zijn, omdat ze blijven bestaan nadat de slaapdruk is afgebouwd. Mogelijke oorzaken: stress door de handling, neuronale activiteit, of de tijd die cellulaire stressroutes nodig hebben. |
+| **Uniek voor RS** | Alleen DE bij RS2 of RS6, niet na SD. | Mitochondriaal metabolisme (Ndufb5, Ndufa8), Wnt-signalering (Wnt7b), RNA-binding. | Herstelslaap lijkt dus zelf genen te veranderen, deels in tegengestelde richting van SD. Dit kan duiden op kwalitatieve verschillen tussen herstelslaap en normale slaap. |
+
+**Voorbehouden die wij zelf moeten meewegen** (dit zijn onze eigen opmerkingen, geen conclusies van de paper):
+
+- "Niet meer DE" betekent niet automatisch "terug op baseline". Een gen kan net onder de significantiedrempel zitten, zeker bij kleine groepen (n = 3). Een gen kan ook net over de drempel gaan en dan als "anders" tellen. De indeling in patronen is dus gevoelig voor power en drempels.
+- Controles zijn tijdgematcht, maar verschillende groepen komen uit verschillende labs en weefsels. Een patroon kan deels door batch komen.
+- Stress door SD en neuronale activiteit zijn niet los te zien van slaapverlies in dit ontwerp. De interpretatie "slaapspecifiek" versus "niet-slaapspecifiek" is daarom een aanname.
+- Controleer de richting zelf: in de paper staat oxidatieve fosforylering (mt-Co1, mt-Cytb) in de resultaten als omlaag en in de discussie als omhoog. Wij bepalen de richting uit onze eigen data.
+
+## 6. Planning (indicatief) met uitleg per stap
+
+Per stap staat wat we doen, waarom, wat het oplevert en hoe we controleren of het goed ging.
+
+**Stap 1 – Data en samplesheet**
+
+- **Wat:** scope bevestigen (sectie 3.1), samplelijst ophalen uit GEO/SRA, FASTQ downloaden en een samplesheet maken (sample-ID, groep, serie, hersengebied, ZT, bestandsnamen).
+- **Waarom:** de samplesheet is de basis van alle volgende stappen. Een verkeerd gelabeld sample leidt later tot verkeerde conclusies.
+- **Levert op:** een tabel met alle samples die we gebruiken en alle FASTQ-bestanden.
+- **Check:** aantallen per groep kloppen met sectie 3.3 en met de paper.
+
+**Stap 2 – Kwaliteitscontrole (FastQC en MultiQC)**
+
+- **Wat:** voor elk sample de kwaliteit van de reads nakijken.
+- **Waarom:** slechte of afwijkende samples en overgebleven adapters beïnvloeden alles wat volgt.
+- **Levert op:** een MultiQC-rapport, en een beslissing of trimmen nodig is.
+- **Check:** geen sample valt sterk uit de toon (leeslengte, kwaliteit, aantal reads).
+
+**Stap 3 – Kwantificatie (Salmon en tximeta)**
+
+- **Wat:** index bouwen met GENCODE M28 (genoom als decoy), alle samples kwantificeren en samenvatten naar gen-niveau.
+- **Waarom:** van reads naar getallen per gen, wat de statistiek nodig heeft.
+- **Levert op:** de count matrix (genen × samples).
+- **Check:** het percentage reads dat is toegewezen (mapping rate) is vergelijkbaar tussen samples. Het aantal genen en totalen zijn plausibel (~18.000 genen na filtering).
+
+**Stap 4 – Filteren, normaliseren en batchcorrectie (EDASeq, RUVSeq)**
+
+- **Wat:** lage-expressiefilter, upper-quartile-normalisatie, PCA vóór en na RUVs (k = 3, met de 3422 negatieve controles).
+- **Waarom:** zonder deze stap meet je vooral lab- en sequencing-verschillen in plaats van biologie (~48% van de variatie door lab).
+- **Levert op:** genormaliseerde tellingen en de RUV-factoren.
+- **Check:** na correctie groeperen samples op behandeling en kloktijd (PC1 ≈ hoeveelheid slaap, PC2 ≈ kloktijd) en niet op lab. Bij de kern-scope vooral kijken of er een dag-effect of seriesverschil overblijft. Bovendien kijken we of RUVs de biologie niet wegcorrigeert.
+
+**Stap 5 – Differentiële expressie en validatie (edgeR)**
+
+- **Wat:** per contrast een toets per gen (QLF, FDR < 0.05, log2CPM > 0). Volcano plots maken.
+- **Waarom:** dit geeft de DEG-lijsten, het hart van het onderzoek.
+- **Levert op:** per contrast een lijst DEGs (omhoog en omlaag) en volcano plots.
+- **Check:** vergelijk met de paper: aantallen DEGs (sectie 1.2), percentage positieve controles teruggevonden (SD5–6: ~90%) en aantal negatieve controles in de lijst. Vergelijk ook direct met Supplemental Table S3 van de auteurs.
+
+**Stap 6 – Intersecties (UpSet)**
+
+- **Wat:** DEG-lijsten van de contrasten kruisen, omhoog en omlaag apart.
+- **Waarom:** zo zien we per gen wanneer het verandert en herstelt (sectie 5.1).
+- **Levert op:** UpSet-plots en gen-lijsten per herstelpatroon.
+- **Check:** de grote groepen in de paper (bijvoorbeeld 1149 omhoog en 1898 omlaag die alleen bij SD5–6 veranderen en bij RS2 weer normaal zijn) in dezelfde orde van grootte terugvinden. Bij de kern-scope kunnen alleen de patronen "snel genormaliseerd" en "uniek voor RS2" bepaald worden.
+
+**Stap 7 – Functionele verrijking (DAVID)**
+
+- **Wat:** voor de interessante genlijsten testen welke functies en pathways oververtegenwoordigd zijn.
+- **Waarom:** een lijst van duizenden genen is niet te lezen. Verrijking maakt er thema's van (bijvoorbeeld chromatine, redox, stress).
+- **Levert op:** tabellen met verrijkte termen en bubble plots.
+- **Check:** komen de kernthema's uit de paper terug (redox, chromatine, DNA-schade/herstel, Dec1/Dec2, cholesterol, stress)? De achtergrond is de lijst van expressed genen.
+
+**Stap 8 – Vergelijking met de paper en rapportage**
+
+- **Wat:** onze resultaten naast die van de auteurs leggen en verschillen verklaren (versies, filters, scope, ontbrekende samples). Logboek bijwerken en verslag schrijven.
+- **Waarom:** dit is het doel van het project: nagaan of de resultaten reproduceerbaar zijn.
+- **Levert op:** het eindverslag met een overzicht van overeenkomsten en afwijkingen.
+- **Check:** elke afwijking heeft een verklaring of staat als open punt genoteerd.
+
+**Optioneel:** dezelfde analyse met STAR + featureCounts + DESeq2 en kijken hoe sterk de DEG-lijsten overlappen. Dit toont hoe afhankelijk de resultaten zijn van de gekozen pipeline.
+
+## 7. Risico's en open punten
+
+- **Scope en samplelijst:** de scope (kern of volledige reproductie) moet nog bevestigd worden. De GSM-nummers per sample en wat in elke GEO-serie zit (wild-type of mutant, RNA-Seq of ATAC-Seq) moeten gecontroleerd worden. Eén GSM is niet per definitie één dier.
+- **Batch-effecten:** bij de volledige reproductie sterk (labs en hersengebieden). Bij RS2/HC7 kan een dag-effect optreden. Controleer dat RUVs de biologie niet wegcorrigeert.
+- **Kleine n:** 3 per groep bij SD3, SD6 en RS6 geeft beperkte power. De indeling in herstelpatronen is daarom gevoelig voor drempels.
+- **Versies:** Ensembl/GENCODE- en toolversies kunnen kleine verschillen in aantallen DEGs geven. De versienummers in de paper lijken niet helemaal consistent (zie 4.2), dus we leggen onze eigen versies vast.
+- **DAVID:** resultaten hangen af van de databaseversie.
+- **Handling-stress:** niet los te zien van slaapverlies. Dit beperkt de interpretatie van "slaapspecifiek".
+- **Alleen mannelijke muizen:** conclusies zijn niet te generaliseren naar vrouwtjes.
+- **Hardware:** Salmon-index, opslag en rekentijd hangen af van de beschikbare machine. Eerst nakijken.
+
+## 8. Bronnen
+
+- Transcriptional dynamics of sleep deprivation and subsequent recovery sleep in the male mouse cortex (bioRxiv, 2024): https://www.biorxiv.org/content/10.1101/2024.08.20.607983
+- Zenodo-record met Supplemental Tables S1–S5 van deze studie: https://zenodo.org/records/15151381
+- GSE140345 – Hor et al. 2019, PNAS (Sleep–wake-driven and circadian contributions to daily rhythms in gene expression and chromatin accessibility in the murine cortex): https://pmc.ncbi.nlm.nih.gov/articles/PMC6925978
+- GSE113754 – Peixoto-lab, A global transcriptional atlas of the effect of acute sleep deprivation in the mouse frontal cortex (bioRxiv): https://www.biorxiv.org/content/10.1101/2023.11.28.569011
+- Eerder werk van het lab met RUV en herstelslaap (BMC Genomics, 2016): https://link.springer.com/10.1186/s12864-016-3065-8
+- Gentle handling: Do mice habituate to "gentle handling"? (Sleep): https://pmc.ncbi.nlm.nih.gov/articles/PMC3079948 ; Daily acclimation handling does not affect hippocampal LTP (Sleep): https://pmc.ncbi.nlm.nih.gov/articles/PMC3612265 ; Chronic sleep deprivation in mouse pups by means of gentle handling (JoVE): https://pmc.ncbi.nlm.nih.gov/articles/PMC6235482
