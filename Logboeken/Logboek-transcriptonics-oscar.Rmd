@@ -1,0 +1,492 @@
+---
+title: "Logboek-transcriptonics-oscar"
+Author: "Oscar Dogger"
+output: html_document
+---
+
+# Introductie
+# Data
+# Tools
+
+
+# Dagen
+
+## 21-10-2026
+
+### Doel van de dag
+Vandaag is het doel om een geschikt artikel te vinden voor Transcriptonics en de bijbehorende samples te downloaden.
+
+### Motivatie van aanpak
+Om een onderzoek over transcriptonics te kunnen doen moeten we eerst een geschikt artikel vinden met bijbehorende samples en data.
+
+### Uitgevoerde werkzaamheden
+Als eerst hebben we met de docent gesproken over wat precies nodig is voor het artikel, hier uit kwamen de volgende eisen:
+Minimaal 6 samples, minimaal 2 groepen (3 replicaties/samples per groep), een publicatie en raw count data
+
+Met deze informatie gaan wij een onderzoek zoeken op: "https://www.ncbi.nlm.nih.gov/geo/browse/?view=series&display=10"
+Hierbij moeten we kijken onder het kopje "Expression profiling by high throughput sequencing", zij de docent.
+Verder heb ik het ook nog gesorteerd op sample groote van groot naar klein en ben ik naar pagina 4000 gegaan 10 samples per onderzoek).
+
+Hieronder staat een lijst van alle bekeken artikelen met reden afgekeurd of goedgekeurd gevonden door mij:
+Te weinig samples per groep (2 ipv 3): https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE241658
+Geen citation te weinig samples: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE242144
+Geen citation: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE240901
+Goed: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE237419 ; Transcriptional dynamics of sleep deprivation and subsequent recovery sleep in the murine cortex
+
+
+Alexander en ik hebben besproken en vonden beiden het "Transcriptional dynamics of sleep deprivation and subsequent recovery sleep in the murine cortex" artikel leuk. Hierdoor gaan wij dan hiermee verder, we moeten nu nog gaan kiezen of we alleen de nieuwe data van het onderzoek gaan gebruiken of ook de data die ze in het onderzoek van een ander onderzoek hebben.
+
+We gaan nu van ons gekozen onderzoek de data downloaden, hiervoor gaan we eerst een accession list downloaden van hier: https://www.ncbi.nlm.nih.gov/Traces/study/?acc=PRJNA994922&o=acc_s%3Aa
+Deze hebben we dan gedownload en in ons werk folder gr3_transcriptomics gezet.
+
+We hebben het commando van ons genomics project gepakt en gedit voor ons project van nu:
+
+```{bash SRA_download, eval=FALSE}
+prefetch $(</homes/jrjpeterse/Genomics/SRR_Acc_List.txt) --output-directory \
+/students/2026-2027/Thema05/Groep3/SRA
+```
+
+Het volgende commando is de gedite
+```{bash SRA_download, eval=FALSE}
+prefetch $(</students/2026-2027/Thema05/gr3_transcriptomics/SRA/SRR_Acc_List.txt) --output-directory \
+  /students/2026-2027/Thema05/gr3_transcriptomics/SRA
+```
+
+Wij gaan deze download nu laten en dan zien we de volgende les of het gedownload is of niet.
+
+### Resultaten
+We hebben een artikel gekozen en begonnen met de download.
+
+### Coclusie en vervolgstappen
+We hebben een artikel gekozen waardoor we nu verder kunnen met ons onderzoek.
+De volgendestappen die we moeten gaan zetten zijn het artikel goed lezen en uitpluizen wat ze met de transcriptomics hebben gedaan. Verder moeten we gaan kiezen of we de data van het andere onderzoek ook nog willen gaan gebruiken of niet. Hierna moeten we dan een plan van aanpak gaan maken en inleveren als document in brightspace. 
+
+
+## 22-10-2026
+
+### Doel van de dag
+Vandaag is het doel om te beginnen met het plan van aanpak en de SRA files omzetten to fastq
+
+### Motivatie van aanpak
+We moeten gaan beginnen met het plan van aanpak om uit te vogelen wat we nou precies willen bereiken met ons onderzoek.
+
+### Uitgevoerde werkzaamheden
+De download van de SRA's is de vorige keer gelukt hierdoor ga ik verder met ze uit te pakken met het commando die wij de volgende keer in genomics hebben gebruikt:
+```{bash extract_fastq, eval=FALSE}
+find /students/2026-2027/Thema05/Groep3/SRA -name "*.sra" | \
+parallel 'fasterq-dump -O /students/2026-2027/Thema05/Groep3/fastq/ {}'
+```
+Dan verandert voor onze nieuwe plek:
+
+```{bash extract_fastq, eval=FALSE}
+find /students/2026-2027/Thema05/Groep3/SRA -name "*.sra" | \
+parallel 'fasterq-dump -O /students/2026-2027/Thema05/gr3_transcriptomics/fastq/ {}'
+```
+
+Dit geeft een enorme error doordat ik te weinig ruimte heb op mijn harddisk, want de temp files worden nu niet op assemblix geschreven maar in transcriptonics waar mijn logboek staat. Mijn harddisk was zo vol dat ik deze file niet kon opslaan waardoor dit de tweede keer is vandaag dat ik deze entry doe. Om dit te fixen ga ik met cd naar de fastq folder op assemblix voor het runnen van het commando.
+Verder had ik ook nog de verkeerde plek de SRA files te pakken ik zat die van genomics te pakken. Dit heb ik hieronder ook gefixt
+
+```{bash extract_fastq, eval=FALSE}
+cd /students/2026-2027/Thema05/gr3_transcriptomics/fastq
+
+find /students/2026-2027/Thema05/gr3_transcriptomics/SRA -name "*.sra" | \
+parallel 'fasterq-dump -O /students/2026-2027/Thema05/gr3_transcriptomics/fastq/ {}'
+```
+Dit heeft het gefixed, de fastq files staan nu in: /students/2026-2027/Thema05/gr3_transcriptomics/fastq
+Hieruit zijn 20 files gekomen, 2 files per SRA waarbij de _1 voorkant van de sequentie is en _2 de achter kant is die aan elkaar zijn gekoppeld doormiddel van plek in de file.
+Nu hebben we onze fastq files in de fastq map. Voordat wij verder gaan moeten we eerst precies gaan bedenken wat wij willen doen, zeer verschijnlijk word dit een vergelijking doen tussen de 2 groepen.
+
+### Resultaten
+Ik heb de SRA's uitgepakt tot fastq en die staan in de fastq map
+
+### Coclusie en vervolgstappen
+We hebben nu onze samples uitgepakt en op assemblix staan, verder moeten we nog door met het plan van aanpak.
+
+## 26-10-2026 
+
+### Doel van de dag
+Vandaag ga ik STAR runnen op onze subset en het artikel lezen.
+### Motivatie van aanpak
+Door het artikel te lezen heb ik een idee waar het onderzoek nou echt over gaat.
+
+### Uitgevoerde werkzaamheden
+Alexander heeft mij bijgepraat wat hij vorige les heeft gedaan van subset maken, fastqc runnen en index maken voor star etc.
+Om verder inzicht te krijgen op ons onderzoek heb ik het artikel gelezen. Hieruit hebben we geconcludeerd dat we de twee sample groepen die het onderzoek zelf heeft gesequenced en getest willen gaan vergelijken.
+
+Ik ga nu STAR runnen op de subset, alleen dit moet ik gaan doen in een loop. Om de file namen te krijgen ga ik door de SRR_Acc_list.txt lopen dit ga ik doen met een while loop: https://www.baeldung.com/linux/bash-loop-file-content
+de $ word gebruikt om aan te geven dat het in een variable meot kijken als je dit niet doet is het een stuk tekst "file" https://www.w3schools.com/bash/bash_variables.php
+
+```{bash eval=FALSE}
+cd /students/2026-2027/Thema05/gr3_transcriptomics/
+
+while read file; do
+    echo $file
+    STAR --genomeDir Reference_sequences/star_reference --readFilesIn subset/data/${file}_1_subset.fastq subset/data/${file}_2_subset.fastq --outFileNamePrefix subset/star/${file}_ --outSAMtype BAM SortedByCoordinate --outSAMattributes Standard --quantMode GeneCounts
+done < SRA/SRR_Acc_List.txt
+```
+
+Dit werkt, hierdoor gaan we het nu op de volledige set runnen daarvoor gaan we het volgende commando runen
+
+```{bash eval=FALSE}
+cd /students/2026-2027/Thema05/gr3_transcriptomics/
+
+while read file; do
+    echo $file
+    STAR --genomeDir Reference_sequences/star_reference --readFilesIn fastq/${file}_1.fastq fastq/${file}_2.fastq --outFileNamePrefix realset/star/${file}_ --outSAMtype BAM SortedByCoordinate --outSAMattributes Standard --quantMode GeneCounts
+done < SRA/SRR_Acc_List.txt
+```
+Dit commando heb ik dan gerunt, hiermee is STAR begonnen op onze volledige data set, het is begonnen op 15:25:57/26/10/2026.
+Volgende keer kunnen we dus vwerder met de volgende tool.
+### Resultaten
+STAR is gerunt op de subset en is begonnen op de hele set.
+
+### Coclusie en vervolgstappen
+Nu hoord alles wat wij gaan doen met STAR klaar te zijn, hierdoor kunnen we dan verder met de volgende tool.
+We moeten het plan van aanpak nog afmaken en fixen voor woensdag (28/10/2026), dit is wat wij zeerverschijnlijk volgende les af gaan maken of verder mee gaan.
+
+## 28-10-2026
+
+### Doel van de dag
+Plan van aanpak van Jasmijn fixen en af maken.
+
+### Motivatie van aanpak
+Het plan van aanpak moet morgen worden ingeleveerd.
+
+### Uitgevoerde werkzaamheden
+Ik en Alexander hebben een heel stuk van het plan van aanpak aangepast. Wij vonden dat het te veel gericht was op het onderzoek die we hadden gekozen op pubmed en niet goed duidelijk was voor wat wij gingen doen, wat uiteindelijk het belangerijkst is. Hierna hebben we het terug gestuurd naar Jasmijn voor een laatste check of zij het ook goed vond hoe het nu was.
+
+### Resultaten
+Het plan van aanpak is nu zo goed als klaar, alleen Jasmijn moet nog zeggen of ze het zo goed vind of niet.
+
+### Coclusie en vervolgstappen
+Het plan van aanpak is af, we moeten nu het plan van aanpak gaan uitvoeren in de komende week.
+
+
+## 30-10-2026
+
+### Doel van de dag
+Zo veel mogelijk volgende stappen gaan runnen.
+
+### Motivatie van aanpak
+Volgende week moet het ingeleverd, dus dan moeten we vandaag zo veel mogelijk er aan doen. Dat doen we door zo veel mogelijk tools te runnen.
+
+### Uitgevoerde werkzaamheden
+In ons plan van aanpak willen we tximeta gebruiken om een genecounts file te maken, dit hadden we gevonden in het artikel. Dit hebben we al met STAR gedaan, hierdoor is tximeta eigenlijk niet nodig.
+Na een overleg van met de docent hebben we besloten dat wij de vierde colomn gaan gebruik van de ReadsPerGene output file van star. Deze staat voor " counts for the 2nd read strand aligned with RNA": "https://www.biostars.org/p/218995/"
+
+We moeten deze mergen, alleen dit is veel werk waar wij geen tijd voor hebben. Hierdoor zij Marcel dat het handig is om featurecounts te gaan runnen, hiermee worden alle gene annotation in 1 file gezet van al onze samples die nu verdeeld zijn over meerdere files. 
+Dit gaan we doen met het volgende commando, die Marcel heeft geholpen met maken:
+
+```{bash eval=FALSE}
+cd /students/2026-2027/Thema05/gr3_transcriptomics/subset/star
+
+featureCounts -t exon \
+-g gene_id \
+-a /students/2026-2027/Thema05/gr3_transcriptomics/Reference_sequences/ncbi_dataset/ncbi_dataset/data/GCF_000001635.27/genomic.gtf \
+-s 2 \
+-p \
+--countReadPairs \
+-o counts.txt \
+-T 32 \
+*.bam
+```
+
+Dit commando werkte we hebben het gerunt, hieruit hebben we een counts.txt. Ik ga nu nog dit commando gelijk op onze hele dataset runnen met het volgende commando:
+
+```{bash eval=FALSE}
+cd /students/2026-2027/Thema05/gr3_transcriptomics/realset/star
+
+featureCounts -t exon \
+-g gene_id \
+-a /students/2026-2027/Thema05/gr3_transcriptomics/Reference_sequences/ncbi_dataset/ncbi_dataset/data/GCF_000001635.27/genomic.gtf \
+-s 2 \
+-p \
+--countReadPairs \
+-o counts.txt \
+-T 32 \
+*.bam
+```
+Hiermee hebben we dan de counts.txt data gemaakt voor onze hele dataset, nu moeten we de data gaan verwerken. Dit gaan we eerst doen op onze subset zodat we niet onnodig veel compute in nemen. De tweaks die wij hebben gebruikt doen het volgende:
+
+-t exon : Kijken naar exonen in ons GTF file
+-g gene_id : zet de data in groepen op het gen-id
+-a genomic.gtf : linken naar ons GTF file
+-s 2 : zorgt ervoor dat we naar de reverse reads kijken, dit doen wij door de sequencing methoden die te vinden is in het PVA.
+-p : geeft aan dat onze data paired end reads zijn
+--countReadPairs : Zorgt ervoor dat forward and backward reads niet dubbel voor hetzelfde gen word geteld.
+-o counts.txt : output files
+-T 32 : Aantal threads
+*.bam : input files
+
+Na het runnen hiervan willen we onze data gaan inlezen in R 
+
+```{r}
+library(dplyr)
+library(edgeR)
+library(ggplot2)
+
+
+count_table <- read.table("/students/2026-2027/Thema05/gr3_transcriptomics/realset/star/counts.txt", header=T, row.names = 1)
+
+# hier vraag ik de kolomnamen van de dataframe op.
+kolomnamen <- colnames(count_table)
+
+# van de opgevragen kolommen filter ik de kolommen met onze daadwerkelijke counts eruit.
+dataframe_counts <- select(count_table, c(kolomnamen[6:15]))
+
+colnames(dataframe_counts) <- c("rs_sample_1", "rs_sample_2", "rs_sample_3", "rs_sample_4", "rs_sample_5", "control_sample_1", "control_sample_2", "control_sample_3", "control_sample_4", "control_sample_5")
+
+# met het volgende plotje zien wij hoeveel reads er zijn gemapt per sample.
+barplot(colSums(dataframe_counts)/1e6, las= 2)
+```
+
+Voordat wij een PCA gaan maken moeten we onze data normalizeren, dit doen wij zo "https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf":
+
+```{r}
+# factor maken om de data te groeperen
+group <- factor(c(1,1,1,1,1,2,2,2,2,2), labels = c("rs2","control"))
+
+# het groeperen van de data
+y <- DGEList(counts=dataframe_counts,group=group)
+
+# dan normaliseren wij de data op de volgende manier
+count_tpm <- tpm(y, count_table$Length)
+```
+
+Dan gaan we het PCA maken "https://www.quantargo.com/help/r/latest/packages/limma/3.46.0/plotMDS":
+
+```{r}
+# door gene.selection="common" te gebruiken met plotMDS wordt er een pca uitgevoerd
+plotMDS(count_tpm, gene.selection = "common", labels = c("rs2","control"))
+?plotMDS
+```
+
+### Resultaten
+De resultaten zijn de readcount data, een plot van het totaal aantal reads per sample /1e6 en een PCA.
+
+### Coclusie en vervolgstappen
+Onze data is nogal verspreid in reads van 20-60m reads per sample, dit is goed te zien in de barplot. 
+Onze pca laat zien dat onze rs2 groep en controlegroep aardig overlapen kwa expressie, dit komt zeer waarschijnlij doordat ons pca kijkt naar alle genen. Waardoor de expressie overlapt
+
+Voor de volgende keer moeten we het filteren gaan doen van onze samples. Verder moeten we dan de Differentiële expressie en validatie doen.
+
+
+## 2-11-2026
+
+### Doel van de dag
+Vandaag willen wij de DEGs gaan bepalen
+### Motivatie van aanpak
+
+
+### Uitgevoerde werkzaamheden
+
+Als eerst moeten we onze data gaan filteren, dit gaan wij doen doormiddel van filteren op dat iedere sample minimaal 10 keer hetzelfde gen heeft gemeten bij ieder sample. Dit gaan we doen doormiddel van het volgende stuk R code "https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf".
+
+```{R}
+# factor maken om de data te groeperen
+group <- factor(c(1,1,1,1,1,2,2,2,2,2), labels = c("rs2","control"))
+group <- relevel(group, ref = "control") #Hiermee word control de referentie groep dit is nodig voor de model.matrix van later want anders is de referntie rs2 ipv de control
+
+# het groeperen van de data
+y <- DGEList(counts=dataframe_counts,group=group)
+
+pass_rs2  <- apply(dataframe_counts[, group == "rs2"],     1, min) >= 10  # laagste waarde per 5 samples opschrijven voor rs2 groep en dan kijken of die groter is of gelijk aan 10 (onze cut off) opschrijven rs2
+pass_ctrl <- apply(dataframe_counts[, group == "control"], 1, min) >= 10  # laagste waarde per 5 samples opschrijven voor control groep en dan kijken of die groter is of gelijk aan 10 (onze cut off)
+
+keep <- pass_rs2 | pass_ctrl
+
+y <- y[keep, , keep.lib.sizes = FALSE]
+y <- normLibSizes(y)
+
+design <- model.matrix(~group)
+fit <- glmQLFit(y,design)
+qlf <- glmQLFTest(fit,coef=2)
+topTags(qlf)
+```
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
+
+## 
+
+### Doel van de dag
+### Motivatie van aanpak
+### Uitgevoerde werkzaamheden
+### Resultaten
+### Coclusie en vervolgstappen
