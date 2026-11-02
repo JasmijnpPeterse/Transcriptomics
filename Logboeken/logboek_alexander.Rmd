@@ -1,0 +1,316 @@
+---
+title: "logboek_transcriptomics"
+output: html_document
+---
+
+
+
+## 10/21/2026
+
+### doel van de dag
+
+het doel van vandaag is om een artikel te vinden wat geschikt is voor transcriptomics onderzoek. daarnaast willen we de sample data van het gekozen artikel vandaag ook nog downloaden, of in ieder geval de download aan zetten.
+
+### motivatie van aanpak
+
+ons vorige experiment was prima te gebruiken voor genomics, maar wij hebben daar niet genoeg groepen en/of samples om dat experiment ook te gebruiken voor transcriptomics. daarom moeten wij een nieuw experiment kiezen en deze dus ook vanaf het begin af aan weer uitvoeren. 
+
+### uitgevoerde werkzaamheden
+
+er is vandaag door mij en oscar gekeken op "https://www.ncbi.nlm.nih.gov/geo/browse/?view=series&display=20&page=4000&type=3&zsort=samples". hier kijken wij naar een experiment met op zijn minst 6 samples en op zijn minst 2 groepen. verdere criteria zijn dat het gedaan moet zijn met high throughput sequencing. na een tijdje zoeken zijn wij op het volgende artikel gekomen: "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE237419". deze heeft een totaal van 10 samples verdeeld over 2 groepen, dus in essentie voldoet hij aan de eisen van een onderzoek voor transcriptomics. wel een tekortkoming van dit onderzoek is dat het onderzoek 3 groepen lijkt te gebruiken, terwijl zij de data van maar 2 van deze groepen vrijgeven. zij hebben namelijk data van een third party source gebruikt, zoals vermeld op "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE237419".
+toch kiezen wij er voor om dit experiment uit te voeren op in ieder geval de 2 zelf geteste groepen van de auteurs. eerst moeten wij daarvoor de data installeren. dit doen wij door middel van een accession list die wij downloaden van NCBI op "https://www.ncbi.nlm.nih.gov/Traces/study/?acc=PRJNA994922&o=acc_s%3Aa".
+
+om de data van de accession list te downloaden moeten wij het volgende commando runnen: 
+
+```{bash SRA_download, eval=FALSE}
+prefetch $(</students/2026-2027/Thema05/gr3_transcriptomics/SRA/SRR_Acc_List.txt) --output-directory \
+/students/2026-2027/Thema05/gr3_transcriptomics/SRA
+```
+
+deze duurt best lang met laden, dus de resultaten hiervan zullen de volgende keer pas noteerbaar zijn. het runnen van de code gaf voor zover wij zagen geen foutmeldingen, dus wij zijn ervan uitgegaan dat deze foutloos gaat. 
+
+### resultaten 
+
+tot op het moment kunnen wij wel zien dat het eerste bestand al succesvol gedownload is. dit zegt ons waarschijnlijk dat de rest ook lukt, maar dat volgt de volgende entry. 
+
+p.s. van de dag erna, alle bestanden zijn gedownload en de bestanden zijn van de groottes die wij verwachten. 
+
+### conclusie en vervolgstappen
+
+onze data is successvol gedownload. dit betekend dat wij morgen bezig kunnen gaan met fasterq dump om de fastq vanuit onze data te extraheren. verder kunnen wij alvast het referentiegenoom van de muis downloaden en hier een index mee maken met/voor STAR
+
+## 23/10/2026
+
+### doel van de dag
+
+vandaag moeten wij ons plan van aanpak schrijven, daarvoor uitzoeken welke tools wij moeten gebruiken (en mogelijk uitvoeren) en het referentiegenoom downloaden en mogelijk een index maken van ons referentiegenoom van de mus musculus. verder moeten er nog subsets gemaakt worden van onze data. 
+
+### motivatie van aanpak
+
+om ons experiment voor te bereiden en en beter beeld te krijgen op wat wij moeten doen met onze data, gaan wij bezig met deze dingen.
+
+### uitgevoerde werkzaamheden
+
+eerst heb ik vandaag het referentiegenoom GRCm39 van de mus musculus gedownload
+(te vinden op https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000001635.27/). hier heb ik de genome sequences (fasta), annotation features (gff en gtf) en transcripts (fasta) gedownload. daarna heb ik deze referentiegenomen in een map gezet (/students/2026-2027/Thema05/gr3_transcriptomics/Reference_sequences).
+
+verder heb ik vandaag subsets gemaakt van onze dataset. ik heb dat gedaan door het volgende commando te runnen. met de manier waarop wij ons commando runnen, is de -s (de seed) van de subsets 676967 en is de grootte van onze subsets 100000 reads. het maken van de loop is met behulp van Marcel gedaan. verdere informatie van seqtk is vanuit het genomics logboek gehaald. 
+
+```{bash eval=FALSE}
+# deze loop zorgt er voor dat voor elk bestand in de folder hieronder een subset gemaakt wordt en naar de subsetfolder wordt geschreven. verder print de lijn echo het bestand waar hij op dit moment is in de terminal.
+
+cd /students/2026-2027/Thema05/gr3_transcriptomics/fastq
+
+for file in *.fastq; do
+  base="${file%.fastq}"
+  echo $base
+  seqtk sample -s 676967 "${base}.fastq" 100000 > ../subset/"${base}_subset.fastq"
+done
+
+```
+
+dit heeft voor al onze bestanden successvol een subset gemaakt. na even te kijken naar onze subsets is het duidelijk dat de maximale lengte van onze reads 100 baseparen is. dit is relevant voor de volgende stap, namelijk het maken van een indexgenoom met STAR. voor het maken van deze index heb ik het volgende commando gerund:
+
+```{bash eval=FALSE}
+
+cd /students/2026-2027/Thema05/gr3_transcriptomics/Reference_sequences/ncbi_dataset/ncbi_dataset/data/GCF_000001635.27
+
+STAR --runMode genomeGenerate --genomeDir /students/2026-2027/Thema05/gr3_transcriptomics/Reference_sequences/star_reference --genomeFastaFiles GCF_000001635.27_GRCm39_genomic.fna --sjdbGTFfile genomic.gtf --sjdbOverhang 99
+```
+
+in dit commando doen de tweaks het volgende:
+--runMode: dit geeft aan dat wij STAR gebruiken om een index te maken.
+--genomeDir: dit geeft de output directory aan.
+--genomeFastaFiles: hiermee bepaal je welk bestand het genoom is.
+--sjdbGTFfile: hiermee geef je aan welk bestand het gtf bestand is voor het genoom
+--sjdbOverhang: dit is hoe ver STAR om een splice site heen kijkt. aangeraden was om dit de maximale read length -1 te maken.
+--genomeSAindexNbases: Grootte van de index, de default is 14. wij hebben 10 gebruikt als aanrader van STAR.
+
+ik heb de data van de subset map in een /data map gezet, zodat al onze tool runs van de subset geordent in de subsetmap geplaatst kunnen worden. daarnaast heb ik nog een /fastqc map gemaakt zodat we uiteindelijk fastqc kunnen runnen en de kwaliteit van onze subsets kunnen bekijken. dit probeer ik met de volgende code: 
+
+```{bash eval=FALSE}
+# deze loop zorgt er voor dat alle bestanden van onze subset een fastqc run krijgen. 
+cd /students/2026-2027/Thema05/gr3_transcriptomics/subset/data
+
+for file in *.fastq; do
+  base="${file%.fastq}"
+  echo $base
+  fastqc "${base}.fastq" --outdir /students/2026-2027/Thema05/gr3_transcriptomics/subset/fastqc
+done
+
+# noot voor later: fastqc geeft zelf al aan hoe ver het per bestand is, dus daar hoeft in principe geen echo $base voor gerund te worden.
+``` 
+
+dit heeft geen verdere problemen opgeleverd en de output van de fastqc is zoals verwacht. van alle subset bestanden is er een fastqc output. ik ga daar op dit moment nog geen analyse op doen, maar ik ben van plan om daar multiqc voor te gebruiken. van het vorige project (genomics) heb ik nog een multiqc geinstalleerd staan, dus die versie gebruik ik weer om multiqc te runnen. dit staat in de map /students/2026-2027/Thema05/Groep3/subset/quality_control. dit is een virtual environment en moet dus eerst geactiveerd worden om multiqc mee te kunnen runnen. dat heb ik op de volgende manier gedaan:
+
+```{bash eval=FALSE}
+
+cd /students/2026-2027/Thema05/Groep3/subset/quality_control/venv
+
+# om de virtual environment met multiqc te activeren run ik het volgende
+source bin/activate
+
+```
+
+daarna heb ik de daadwerkelijke code voor multiqc gerund: 
+
+```{bash eval=FALSE}
+
+cd /students/2026-2027/Thema05/gr3_transcriptomics/subset/fastqc
+
+multiqc --outdir /students/2026-2027/Thema05/gr3_transcriptomics/subset/multiqc .
+
+```
+
+het multiqc bestand wat hieruit kwam heb ik even snel bekeken. zonder te diep op de daadwerkelijke plotjes in te gaan heb ik gezien dat multiqc wel voor alle dingen een plot heeft gemaakt van alle bestanden. dit was dus een succes.
+
+### resultaten 
+
+de resultaten van vandaag zijn een subset van al onze data, te vinden in de map /students/2026-2027/Thema05/gr3_transcriptomics/subset. verder heb ik het star commando gerund om een index te maken van het genoom, voor de mapping. deze tool is op het moment van schrijven nog niet klaar, dus de resultaten daarvan zullen de volgende keer vermeld worden.
+verder heb ik van alle bestanden van de subset een fastqc output. deze zijn te vinden in de folder /students/2026-2027/Thema05/gr3_transcriptomics/subset/fastqc.
+verder heb ik van de fastqc runs ook nog een multiqc gemaakt. deze is te vinden in de folder /students/2026-2027/Thema05/gr3_transcriptomics/subset/multiqc.
+
+p.s. het maken van de star index is waarschijnlijk goed gegaan, aangezien ik een bestand heb van 2.7 gigabyte in de map waar ik mijn star index output wilde.
+
+### conclusie en vervolgstappen
+
+de conclusie van vandaag is dat de voorbereiding van ons project zo goed als klaar is. er moet nog een plan van aanpak voor ons daadwerkelijke project geschreven worden, zodat wij ook een leidende draad hebben in het transcriptomics project. 
+
+## 26/10/2026
+
+### doel van de dag
+
+vandaag is het doel om te werken aan het plan van aanpak. 
+
+### motivatie van aanpak
+
+het plan van aanpak moet nog afgeschreven worden, zodat wij een handleiding hebben waarmee wij verder kunnen. 
+
+### uitgevoerde werkzaamheden
+
+eerst heb ik gekeken naar het door jasmijn geschreven plan van aanpak en hierop mijn commentaar geleverd. het verdere schrijven van een nieuw plan van aanpak zou verder door Jasmijn gedaan worden.
+verder wilden we al een begin gaan maken met de read mapping dmv star. daarvoor heb ik met behulp van marcel het volgende script geschreven:
+
+```{bash eval=FALSE}
+# goede directory klaarzetten voor het volgende commando
+cd /students/2026-2027/Thema05/gr3_transcriptomics/subset/data
+
+# dit commando zorgt ervoor dat de namen van de accession list die wij eerder hebben gedownload worden gepakt, waarna deze worden gebruikt voor STAR, eindigend op _1_subset.fastq en/of _2_fastq. dit zorgt er voor dat STAR zowel de forward als backward reads van onze data ziet en runt. 
+cat /students/2026-2027/Thema05/gr3_transcriptomics/SRA/SRR_Acc_List.txt | parallel STAR --runThreadN 4 \
+--genomeDir /students/2026-2027/Thema05/gr3_transcriptomics/Reference_sequences/star_reference \
+--readFilesIn {}_1_subset.fastq {}_2_subset.fastq \
+--outFileNamePrefix /students/2026-2027/Thema05/gr3_transcriptomics/subset/star_alex/{}_star_ \
+--outSAMtype BAM SortedByCoordinate \
+--outSAMattributes Standard \
+--quantMode GeneCounts
+```
+de tweaks van STAR in deze run doen het volgende: 
+--genomeDir: hier geef je aan in welke directory het (geindexeerde) genoom staat
+--readFilesIn: dit geeft aan welk bestand je wilt gebruiken om te mappen
+--outFileNamePrefix: STAR maakt meerdere bestanden. hiermee geef je aan waar die namen mee beginnen.
+--outSAMtype: dit is het type outputbestand
+--outSAMattributes: hier kan je voor sam/bam bestanden verschillende tags toevoegen (zie https://samtools.github.io/hts-specs/SAMtags.pdf voor meer informatie)
+--quantMode: dit zorgt ervoor dat STAR een extra outputbestand maakt met daarin de gene counts (hoeveel reads per gen). bij nader inzien gaan wij deze niet gebruiken, dus zou dit in de toekomst weggelaten kunnen worden.
+-- runThreadN: limiteerd het aantal threads waar de tool op runt
+
+tijdens het schrijven van dit commando had Oscar ook al wat gemaakt, dus in plaats van de map /students/2026-2027/Thema05/gr3_transcriptomics/subset/star heb ik mijn run gedaan in /students/2026-2027/Thema05/gr3_transcriptomics/subset/star_alex. de output van deze runs zou niet moeten verschillen, aangezien het met dezelfde data en versies is gedaan. het vershil in onze code is dat die van Oscar een voor een runt en die van mij parallel runt. voor verder inzicht over de code van Oscar kan je in zijn logboek kijken. na het runnen van star op onze subset hebben wij ook een run aangezet voor onze daadwerkelijke data. dit is bewust met zijn geschreven script gedaan, omdat die dus niet parallel runt en wat vriendelijker is voor de assemblix server. 
+
+### resultaten 
+
+onze read mapping is successvol voor onze subset en waarschijnlijk ook successvol op onze volle dataset gerund. 
+
+### conclusie en vervolgstappen
+
+voor het plan van aanpak moet er nog een finale versie geschreven worden en de tools moeten nog gerund worden.
+
+
+## 28/10/2026
+
+### doel van de dag
+
+een finale versie van het plan van aanpak schrijven
+
+### motivatie van aanpak
+
+Jasmijn heeft een plan van aanpak geschreven, Oscar en ik gaan daar naar kijken om de fouten eruit te halen en verbeteringen proberen te maken
+
+### uitgevoerde werkzaamheden
+
+vandaag hebben Oscar en ik aanpassingen gemaakt in het geschreven plan van aanpak. de versie met onze aanpassingen hebben wij doorgestuurd naar Jasmijn voor een laatste check.
+
+### resultaten 
+
+een compleet plan van aanpak
+
+### conclusie en vervolgstappen
+
+de volgende stap in ons project is het uitzoeken van tximeta. (en verdere vervolgstappen)
+
+
+## 30/10/2026
+
+### doel van de dag
+
+vandaag gaan we tximeta uitzoeken en proberen te runnen met onze data
+
+### motivatie van aanpak
+
+dit is de volgende stap voor onze transcriptomics pijplijn
+
+### uitgevoerde werkzaamheden
+
+bij nader inzien van Marcel moeten wij een begin gaan maken met de exploratieve analyses in R. hierdoor hebben wij in plaats van tximeta gekozen voor featurecounts als manier om onze counts per gen te krijgen. daardoor hebben wij het volgende commando gerunt: 
+
+```{bash eval=FALSE}
+cd /students/2026-2027/Thema05/gr3_transcriptomics/subset/star
+
+featureCounts -t exon \
+-g gene_id \
+-a /students/2026-2027/Thema05/gr3_transcriptomics/Reference_sequences/ncbi_dataset/ncbi_dataset/data/GCF_000001635.27/genomic.gtf \
+-s 2 \
+-o counts.txt \
+-p \
+--countReadPairs \
+-T 32 \
+*.bam
+
+``` 
+
+dit was successvol. nadatik hem hier heb gerunt, heeft Oscar hem ook nog op de hele dataset gerunt. de tweaks die wij hebben gebruikt betekenen het volgende:
+-t exon: de standaard, dit zorgt ervoor dat featurecounts naar de exonen kijkt in ons GTF-bestand
+-g gene_id: groepeerd de data op het gen-id. 
+-a /students/2026-2027/Thema05/gr3_transcriptomics/Reference_sequences/ncbi_dataset/ncbi_dataset/data/GCF_000001635.27/genomic.gtf: de locatie van het .gtf bestand
+-s 2: zorgt ervoor dat de reverse reads bekeken worden door de gekozen tool. dit doen wij in verband met onze sequencing methode, te vinden in het plan van aanpak. 
+-o counts.txt: output bestand
+-p: geeft aan dat onze data uit paired end reads bestaat
+--countReadPairs: zorgt ervoor dat forward en backward reads niet allebei opgeteld worden als dit op hetzelfde gen zit
+-T 32: het aantal threads waarop ons commando runt
+
+na het runnen van featurecounts, willen wij onze data in gaan lezen en hier 
+
+```{r}
+library(dplyr)
+library(edgeR)
+library(ggplot2)
+
+
+count_table <- read.table("/students/2026-2027/Thema05/gr3_transcriptomics/realset/star/counts.txt", header=T, row.names = 1)
+
+# hier vraag ik de kolomnamen van de dataframe op.
+kolomnamen <- colnames(count_table)
+
+# van de opgevragen kolommen filter ik de kolommen met onze daadwerkelijke counts eruit.
+dataframe_counts <- select(count_table, c(kolomnamen[6:15]))
+
+colnames(dataframe_counts) <- c("rs_sample_1", "rs_sample_2", "rs_sample_3", "rs_sample_4", "rs_sample_5", "control_sample_1", "control_sample_2", "control_sample_3", "control_sample_4", "control_sample_5")
+
+# met het volgende plotje zien wij hoeveel reads er zijn gemapt per sample.
+barplot(colSums(dataframe_counts)/1e6, las= 2)
+```
+
+voordat wij onze pca willen doen, moeten wij nog de data gaan normaliseren. dit doen wij op de volgende manier:
+
+```{r}
+# factor maken om de data te groeperen
+group <- factor(c(1,1,1,1,1,2,2,2,2,2), labels = c("rs2","control"))
+
+# het groeperen van de data
+y <- DGEList(counts=dataframe_counts,group=group)
+
+# dan normaliseren wij de data op de volgende manier
+count_tpm <- tpm(y, count_table$Length)
+
+```
+
+dan gaan wij nu onze daadwerkelijke pca-analyse doen:
+
+```{r}
+# door gene.selection="common" te gebruiken met plotMDS wordt er een pca uitgevoerd
+plotMDS(count_tpm, gene.selection = "common", labels = c("rs2","control"))
+?plotMDS
+```
+
+
+
+### resultaten 
+
+de resultaten van vandaag zijn readcount data, een plot van het totaal aantal reads op elke sample en de plot van de pca.
+
+### conclusie en vervolgstappen
+
+onze data is nogal verpsreid qua totaal aantal reads. zoals de barplot duidelijk maakt, zijn van onze rs2-groep sample 1 en 4 groter in aantal reads dan de andere groepen in rs2. in onze controlegroep zijn sample 4 en 5 veel groter in aantal reads. 
+onze pca laat zien dat de rs2 groep en controlegroep qua expressie best wat overlap hebben. dit is waarschijnlijk het geval omdat de pca kijkt naar alle genen, waardoor de expressie best wat overlap heeft. 
+
+de volgende keer moeten we onze data nog gaan filteren en kijken naar de differentiale expressie en validatie.
+
+##
+
+### doel van de dag
+
+### motivatie van aanpak
+
+### uitgevoerde werkzaamheden
+
+### resultaten 
+
+### conclusie en vervolgstappen
