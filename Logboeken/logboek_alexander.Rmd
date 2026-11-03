@@ -353,7 +353,7 @@ fit <- glmQLFit(y,design)
 qlf <- glmQLFTest(fit,coef=2)
 
 # deze lijn pakt de top DEG's, default is 10  
-toptags_qlf<-topTags(qlf, n = 100)
+topTags(qlf)
 ```
 
 de output van toptags zijn de volgende dingen per gen:
@@ -392,9 +392,12 @@ ik ben bezig geweest met het uitvogelen van EnhancedVolcano, te zien in het volg
 ```{r}
 library(EnhancedVolcano)
 
-EnhancedVolcano(toptags_qlf, x = "logFC", y = "FCR",
-                         lab=rownames(res),
-                         title = paste("mice"),
+# door in toptags n=Inf aan te geven geeft de functie alle genen terug ipv de top 10, wat default is.
+toptags_qlf <- as.data.frame(topTags(qlf, n=Inf))
+
+EnhancedVolcano(toptags_qlf, x =  "logFC", y = "FDR",
+                         lab=rownames(toptags_qlf),
+                         title = paste("Gene expression of RS2 mice compared to HC7 mice"),
                          subtitle = bquote(italic('FDR <= 0.05 and absolute FC >= 2')),
                          # Change text and icon sizes
                          labSize = 3, pointSize = 1.5, axisLabSize=10, titleLabSize=12,
@@ -402,15 +405,59 @@ EnhancedVolcano(toptags_qlf, x = "logFC", y = "FCR",
                          # Disable legend
                          legendPosition = "none",
                          # Set cutoffs
-                         pCutoff = 0.05, FCcutoff = 2)
+                         pCutoff = 0.05, FCcutoff = 1)
+```
 
+ik heb een tijdje gestoeit met de data goed krijgen. hier kreeg ik telkens de volgende melding uit: 
+
+Error in EnhancedVolcano(toptags_qlf, x = "logFC", y = "FCR", lab = rownames(res),  : 
+  FCR is not numeric!
+
+mijn verwachting is dat de data van toptags niet helemaal bruikbaar is als input voor EnhancedVolcano. daarom ben ik er op gekomen om de toptags als een dataframe te zetten. 
+wat er daadwerkelijk fout ging is een beetje suf. in de enhancedvolcano plot had ik namelijk "FCR" als y gezet inplaats van "FDR" :(.
+
+
+```{r}
+# deze lijnen gebruik ik om te filteren op logFC > 1 en FDR < 0.05
+top_degs <- toptags_qlf[toptags_qlf$logFC > 1,]
+
+top_degs <- top_degs[top_degs$FDR < 0.05,]
+
+top_degs 
+
+# het aantal significante genen is gelijk aan het volgende
+sum(toptags_qlf$FDR <= 0.05)
+
+# het aantal significant veranderde genen is in de volgende lijn gehaald
+significant_degs <- toptags_qlf[toptags_qlf$FDR < 0.05,]
+```
+
+na de veranderingen heb ik de daadwerkelijke volcanoplot gekregen. hieruit was te zien dat er `r nrow(top_degs)` DEG's zijn in onze data. in de dataframe filter ik daarop op de volgende manier:
+
+
+
+```{r eval=FALSE}
+BiocManager::install("Glimma")
+library(Glimma)
+
+# hierdoor krijgen we een beter inzicht van de genen. wij kunnen hiermee zien wat de expressie per individu per groep is. 
+glMDPlot(qlf, counts = y$counts, anno = data.frame(GeneID = rownames(y)), groups = y$samples$group)
 
 
 ```
 
+dan is het nu tijd om een analyse te doen hierop. wij hebben erg veel genen die wel significant zijn maar niet heel veel veranderen (lage log2fold). daarom gaan wij een enrichment analyse doen om te kijken waar deze genen vandaan komen en in wat voor een pathways ze zitten. 
+dit doen wij op de volgende manier
+
+
 ### resultaten 
 
+wij hebben een volcanoplot (te zien bij uitgevoerde werkzaamheden) gemaakt. uit de data hierachter is te halen dat 7 genen een log2fold groter dan 2 (dus een verandering van 4x of meer expressie) hebben. 60 genen hebben een log2fold groter dan 1 (dus een verandering van 2x of meer expressie). er zijn 2833 genen die significant zijn veranderd (adjusted p value van 0.05 of kleiner).
+
 ### conclusie en vervolgstappen
+
+wij hebben een heleboel significante DEG's, wat dus betekend dat er een grote kans is dat er een verschil zit tussen de rs2 en hc7 groepen. 
+voor de volgende keer gaan wij een enrichment analyse doen. dit gaan wij doen met behulp van de clusterProfiler library. hiermij kunnen wij de pathways van onze genen hopelijk visualiseren.
 
 
 ##
