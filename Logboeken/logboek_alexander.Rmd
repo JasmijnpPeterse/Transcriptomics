@@ -303,6 +303,129 @@ onze pca laat zien dat de rs2 groep en controlegroep qua expressie best wat over
 
 de volgende keer moeten we onze data nog gaan filteren en kijken naar de differentiale expressie en validatie.
 
+
+
+
+## 2/11/2026
+
+### doel van de dag
+
+vandaag willen wij verder met onze analyse, wat betekend dat wij de DEG's willen vastleggen. 
+
+### motivatie van aanpak
+
+dit is de volgende stap in onze analyse. door het vast te leggen van DEG's kunnen wij verder gaan kijken naar de effecten van deze genen.
+
+### uitgevoerde werkzaamheden
+
+door middel van de quick start van de user guide van edgeR (te vinden op https://bioconductor.org/packages/3.23/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf) zijn we gaan kijken wat er verder gedaan moet worden in onze analyse. 
+na deze stappen te vergelijken met de dingen die wij vorige keer hebben gedaan, zijn wij de vorige keer vergeten om onze data te filteren. 
+
+samen hebben we code proberen te maken voor filtering van minimaal 10 reads voor een paar samples. de code staat bij Oscar in het logboek. achteraf gezien kunnen wij dit gewoon doen door middel van de functie filterByExpr van edgeR. wij hebben de volgende code uitgezocht en geschreven:
+
+
+```{r}
+# factor maken om de data te groeperen. relevel wordt gebruikt omdat onze rs2 dan uiteindelijk wordt vergeleken met de control, en niet andersom.
+group <- factor(c(1,1,1,1,1,2,2,2,2,2), labels = c("rs2","control"))
+group <- relevel(group, ref="control")
+
+
+# het groeperen van de data
+y <- DGEList(counts=dataframe_counts,group=group)
+
+# in deze lijnen gebeurt het filteren. verdere tweaks om toe te passen zijn te vinden/gevonden op https://rdrr.io/bioc/edgeR/man/filterByExpr.html. minimale expressie staat op 10 aangezien dat volgens de volledige documentatie van edgeR (https://f1000research.com/articles/5-1438/v2) als rule of thumb gebruikt wordt. 
+
+keep <- filterByExpr(y, group=group, min.count = 10)
+y <- y[keep,,keep.lib.sizes=FALSE]
+
+# dan normaliseren wij de data op de volgende manier
+# wij kiezen hier voor normlibsizes in plaats van TPM, omdat normlibsizes de normalisering over alle samples doet en niet alleen per sample.
+y <- normLibSizes(y)
+
+# https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/designmatrices.html
+# dit maakt een model waarin beschreven worden in welke groepen de samples zitten. dit hebben wij nodig voor de volgende stappen.
+design <- model.matrix(~group)
+
+# "Conduct genewise statistical tests for a given coefficient or contrast." uitleg te vinden op https://www.rdocumentation.org/packages/edgeR/versions/3.14.0/topics/glmQLFit
+fit <- glmQLFit(y,design)
+
+# deze lijn kijkt of er een significant verschil is tussen rs2 en de controle 
+qlf <- glmQLFTest(fit,coef=2)
+
+# deze lijn pakt de top DEG's, default is 10  
+toptags_qlf<-topTags(qlf, n = 100)
+```
+
+de output van toptags zijn de volgende dingen per gen:
+
+logFC: de verwachte grootte van de verandering, gemeten op een log2 schaal. ook wel bekend als de log2 fold change.
+logCPM: de gemiddelde expressie van een gen over alle samples, gemeten op een log2 schaal. dit is een indicatie van hoe veel een gen voorkomt in expressie.
+F: de uitgerekende F-waarde. hogere waardes betekenen dat de kans groter is dat de genen differentieel expressed zijn.
+PValue: de P-waarde, gehaald uit de F-waarde. deze is nog niet veranderd voor multiple testing.
+FDR: de P-waarde die aangepast is voor multiple testing over alle genen heen. dit wordt gebruikt om de statistisch significante genen te bepalen.
+
+
+### resultaten 
+
+de resultaten van de code is de "qlf" variabele. de eerste 10 lijnen hiervan zijn in het codeblok bij uitgevoerde werkzaamheden te zien. 
+
+### conclusie en vervolgstappen
+
+uit deze tabel is het nog moeilijk om een conclusie te trekken. de volgende stap die we moeten zetten is het visualiseren van deze data. als we de data hebben gevisualiseerd kunnen wij betere conclusies trekken over onze data.
+
+
+
+## 3/11/2026
+
+### doel van de dag
+
+het doel van vandaag is om de data van de vorige keer te plotten. dit wordt met een volcanoplot gedaan.
+
+### motivatie van aanpak
+
+om een daadwerkelijke uitspraak te doen over onze data moeten we deze eerst visualiseren, zodat er te zien is wat deze dingen betekenen. 
+
+### uitgevoerde werkzaamheden
+
+ik ben bezig geweest met het uitvogelen van EnhancedVolcano, te zien in het volgende stuk code:
+
+```{r}
+library(EnhancedVolcano)
+
+EnhancedVolcano(toptags_qlf, x = "logFC", y = "FCR",
+                         lab=rownames(res),
+                         title = paste("mice"),
+                         subtitle = bquote(italic('FDR <= 0.05 and absolute FC >= 2')),
+                         # Change text and icon sizes
+                         labSize = 3, pointSize = 1.5, axisLabSize=10, titleLabSize=12,
+                         subtitleLabSize=8, captionLabSize=10,
+                         # Disable legend
+                         legendPosition = "none",
+                         # Set cutoffs
+                         pCutoff = 0.05, FCcutoff = 2)
+
+
+
+```
+
+### resultaten 
+
+### conclusie en vervolgstappen
+
+
+##
+
+### doel van de dag
+
+### motivatie van aanpak
+
+### uitgevoerde werkzaamheden
+
+### resultaten 
+
+### conclusie en vervolgstappen
+
+
 ##
 
 ### doel van de dag
