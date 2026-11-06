@@ -3,6 +3,24 @@ title: "logboek_transcriptomics"
 output: html_document
 ---
 
+## Introductie
+zie het plan van aanpak
+
+## Data
+de data die in dit project is gebruikt is te vinden op "https://www.ncbi.nlm.nih.gov/Traces/study/?acc=PRJNA994922&o=acc_s%3Aa". hiervan hebben wij alle data gebruikt. deze data is RNA-seq data van een groep van 5 verschillende mannelijke muizen met 7 uur slaaptekort (hc7 groep) en een groep van 5 mannelijke muizen met 5 uur slaaptekort en 2 uur rustslaap (rs2 groep). hc7 wordt in dit experiment gebruikt als controlegroep. 
+verder hebben wij het volgende referentiegenoom van de Mus musculus gebruikt: GRCm39, te vinden op "https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000001635.27/". dit referentiegenoom hebben wij gebruikt omdat wij een vergelijking willen doen met het gevonden experiment, waarin zij hetzelfde referentiegenoom hebben gebruikt. 
+
+de tools/packages die wij hebben gebruikt:
+seqtk versie 1.4-r122
+fastqc versie 0.12.1
+multiqc versie 1.21
+STAR versie 2.7.11b
+dplyr versie 1.2.1
+edgeR versie 4.10.5
+EnhancedVolcano versie 1.30.0
+Glimma versie 2.22.1
+org.Mm.eg.db versie 3.23.0
+clusterProfiler versie 4.20.0
 
 
 ## 10/21/2026
@@ -251,8 +269,6 @@ na het runnen van featurecounts, willen wij onze data in gaan lezen en hier
 ```{r}
 library(dplyr)
 library(edgeR)
-library(ggplot2)
-
 
 count_table <- read.table("/students/2026-2027/Thema05/gr3_transcriptomics/realset/star/counts.txt", header=T, row.names = 1)
 
@@ -406,6 +422,7 @@ EnhancedVolcano(toptags_qlf, x =  "logFC", y = "FDR",
                          legendPosition = "none",
                          # Set cutoffs
                          pCutoff = 0.05, FCcutoff = 1)
+
 ```
 
 ik heb een tijdje gestoeit met de data goed krijgen. hier kreeg ik telkens de volgende melding uit: 
@@ -432,7 +449,7 @@ sum(toptags_qlf$FDR <= 0.05)
 significant_degs <- toptags_qlf[toptags_qlf$FDR < 0.05,]
 ```
 
-na de veranderingen heb ik de daadwerkelijke volcanoplot gekregen. hieruit was te zien dat er `r nrow(top_degs)` DEG's zijn in onze data. in de dataframe filter ik daarop op de volgende manier:
+na de veranderingen heb ik de daadwerkelijke volcanoplot gekregen. hieruit was te zien dat er `r nrow(top_degs)` DEG's zijn in onze data. hierboven heb ik op de juiste statistieken in de dataframe gefilterd. met Glimma (aangeraden door Marcel) krijgen wij inzicht over onze expressiedata:
 
 
 
@@ -460,27 +477,67 @@ wij hebben een heleboel significante DEG's, wat dus betekend dat er een grote ka
 voor de volgende keer gaan wij een enrichment analyse doen. dit gaan wij doen met behulp van de clusterProfiler library. hiermij kunnen wij de pathways van onze genen hopelijk visualiseren.
 
 
-##
+## 6/11/2026
 
 ### doel van de dag
 
-### motivatie van aanpak
-
-### uitgevoerde werkzaamheden
-
-### resultaten 
-
-### conclusie en vervolgstappen
-
-
-##
-
-### doel van de dag
+de GO enrichment analyse en conclusies hierop te trekken.
 
 ### motivatie van aanpak
 
+om meer inzicht te krijgen op de pathways van de genen die significant verschillen willen wij deze analyse doen.  
+
 ### uitgevoerde werkzaamheden
+
+eerst hebben we uitgezocht hoe de GO enrichment analyse met clusterProfiler moet. hier hebben we het commando "enrichGO" uit gevonden in de documentatie van clusterProfiler (te vinden op https://bioconductor.org/packages/release/bioc/html/clusterProfiler.html). een van de benodigdheden voor enrichGO is een vector met entrez-id genen. onze genen staan nog niet in entrez-format. om dit om te zetten heeft clusterProfiler het commando "bitr". deze zet genen om van een format naar de andere. dit runnen wij op de volgende manier:
+
+```{r}
+# BiocManager::install("org.Mm.eg.db")
+library(org.Mm.eg.db)
+library(clusterProfiler)
+
+# hier verander ik de gene symbols naar de entrez ids van onze degs. alle degs met adj.p < 0.05 zitten in significant_degs. dit gaf de waarschuwing dat 0.07% van de input genes niet gemapt zijn. 
+entrez_genes <- bitr(rownames(significant_degs), OrgDb = org.Mm.eg.db, fromType = "SYMBOL", toType = "ENTREZID")
+
+# ik zet de universe klaar door al onze geteste genen mee te geven
+universe <- bitr(rownames(toptags_qlf), OrgDb = org.Mm.eg.db, fromType = "SYMBOL", toType = "ENTREZID")
+
+# nu willen wij de daadwerkelijke enrichment analyse gaan doen dmv enrichGO:
+ego <- enrichGO(
+  gene = entrez_genes$ENTREZID,
+  OrgDb = org.Mm.eg.db,
+  keyType = "ENTREZID",
+  ont = "BP",           # dit zorgt ervoor dat wij de biological processes terug krijgen van onze analyse
+  universe = universe$ENTREZID
+)
+
+# hier plot ik de resultaten van de analyse.
+barplot(ego, title = "enrichment analysis on biological function")
+```
+
+
+```{r}
+
+# nu willen wij de daadwerkelijke enrichment analyse gaan doen dmv enrichGO:
+ego2 <- enrichGO(
+  gene = entrez_genes$ENTREZID,
+  OrgDb = org.Mm.eg.db,
+  keyType = "ENTREZID",
+  ont = "MF",           # dit zorgt ervoor dat wij de biological processes terug krijgen van onze analyse
+  universe = universe$ENTREZID
+)
+
+# hier plot ik de resultaten van de analyse.
+barplot(ego2, title = "enrichment analysis on cellular components")
+```
+
 
 ### resultaten 
 
+een succesvolle GO enrichment met daarbij een plot van de aantal degs per pathway en de p-waarde per pathway, die bij elke kleiner is dan 0.05. daarnaast hebben we nog een enrichment analyse die de verschillende celonderdelen laat zien en hoeveel DEG's daarbij gevonden zijn.
+
 ### conclusie en vervolgstappen
+
+wij hebben wel degelijk een significant verschil in expressie tussen de rs2 groep en hc7 groep. de verschillen zitten in de pathways die in de plot te zien zijn. de pathways waarin deze DEG's zitten zijn in grote lijnen gezegt de pathways waarmee cholesterol gemaakt wordt (cholesterol biosynthetic pathway via desmosterol/lathosterol, zymosterol metabolic/biosynthetic pathway, farnesyl diphosphate biosynthetic process, mevalonate pathway en de isoprenoid biosynthetic pathway). verder zijn de farnesyl diphosphate biosynthetic process en isoprenoid biosynthetic pathway ook nog actief bij het maken van ubiquinones, wat eiwitten zijn die deel uitmaken van de mitochondrien, wat dus zorgt voor energieproductie. in het originele experiment hebben zij ook DEG's in cholesterolsynthese, dus dit komt daarmee overeen.
+
+in moleculaire functie hebben wij geen significante DEG's, terwijl zij dit in het experiment wel hadden bij de rs2 groep. hierin verschilt onze analyse met het originele experiment.
